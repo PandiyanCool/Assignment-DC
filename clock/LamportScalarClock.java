@@ -1,0 +1,147 @@
+/**
+ * LamportScalarClock: The message sender and the primary controller.
+ * 
+ *
+ */
+
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.util.Random;
+
+public class LamportScalarClock {
+	private static final int DEFAULT_PROCESS_COUNT = 5;
+	private static final int DEFAULT_EVENT_COUNT = 10;
+	MulticastSocket s;
+	InetAddress group;
+	LamportProcess[] receivers;
+
+	public static void main(String[] args) {
+		setProcessNEventCount(args);
+		
+		LamportScalarClock messageSender = new LamportScalarClock();
+		messageSender.initializeMulticastGroup();
+		messageSender.initializeReceivers(5);
+		messageSender.sendRandomMessages(5, 10);
+	}// end main
+	
+	/**
+	 * This method sets the number of processes and events, from the arguments passed to the program
+	 * @param args
+	 */
+	private static void setProcessNEventCount(String[] args) {
+		int iProcessCount = DEFAULT_PROCESS_COUNT;
+		int iEventCount = DEFAULT_EVENT_COUNT;
+		if(null != args && args.length != 0) {
+			try {
+				String strProcessCount = args[0];
+				iProcessCount = Integer.parseInt(strProcessCount);
+				if(iProcessCount < 2 || iProcessCount > 10) {
+					iProcessCount = DEFAULT_PROCESS_COUNT;
+					System.out.println("Setting default process count: " + iProcessCount);
+				}
+			} catch (Exception ex) {
+				iProcessCount = DEFAULT_PROCESS_COUNT;
+			}
+		}		
+		
+		if(null != args && args.length == 2) {
+			try {
+				String strEventCount = args[1];
+				iEventCount = Integer.parseInt(strEventCount);
+				if(iEventCount < 2 || iEventCount > 100) {
+					iEventCount = DEFAULT_EVENT_COUNT;
+					System.out.println("Setting default event count: " + iEventCount);
+				}
+			} catch (Exception ex) {
+				iEventCount = DEFAULT_EVENT_COUNT;
+			}
+		}		
+	}
+	
+	/**
+	 * Initializes the multicast socket
+	 */
+	private void initializeMulticastGroup() {
+		try {
+			group = InetAddress.getByName("239.1.2.3");
+			s = new MulticastSocket(3456);
+			s.setTimeToLive(1);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} // end catch
+		
+	}
+	
+	/**
+	 * Initializes the process, which will participate in distributed computing
+	 */
+	private void initializeReceivers(int numProcesses) {
+		receivers = new LamportProcess[numProcesses];
+		Thread[] receiverThreads = new Thread[numProcesses];
+		for (int i=0; i<numProcesses; i++) {
+			receivers[i] = new LamportProcess(i+1);
+			receiverThreads[i] = new Thread(receivers[i]);
+			receiverThreads[i].start();
+		}
+	}
+	
+	/**
+	 * This will send random events, including local events
+	 * @param numProcesses
+	 * @param numEvents
+	 */
+	private void sendRandomMessages(int numProcesses, int numEvents) {
+		for (int i=1; i<=numEvents; i++) {
+			try {
+				int randSender = getRandom(numProcesses);
+				int randReceiver = getRandom(numProcesses);
+				
+				if(randSender != randReceiver) {
+					receivers[randSender-1].incrementClock();
+				}
+				int iClockSender = receivers[randSender-1].getLocalClock();
+				
+				String msg = randSender + "-" + randReceiver + "-" + iClockSender + "-" + i;
+				System.out.println("Sending message (sender-receiver-senderClock-eventCounter): " + msg);
+				DatagramPacket packet = new DatagramPacket(msg.getBytes(),
+						msg.length(), group, 3456);
+				s.send(packet);
+				Thread.sleep(3000);
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			} // end catch			
+		}
+		
+		sendTerminationMessage();
+		
+		s.close();
+	}
+
+	/**
+	 * Generates a random number depicting a process ID
+	 * @param numProcesses
+	 * @return
+	 */
+	private int getRandom(int numProcesses) {
+		Random rand = new Random();
+		return rand.nextInt(numProcesses) + 1;
+	}
+
+	/**
+	 * This sends termination message to all the processes
+	 */
+	private void sendTerminationMessage() {
+		try {
+			String msg = "0-0-0-STOP";
+			DatagramPacket packet = new DatagramPacket(msg.getBytes(),
+					msg.length(), group, 3456);
+			s.send(packet);
+			Thread.sleep(3000);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} // end catch			
+	}
+	
+	
+} // end class

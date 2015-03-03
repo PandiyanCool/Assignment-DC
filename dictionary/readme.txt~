@@ -1,0 +1,64 @@
+A. Local Dictionary
+===================
+
+1. Run the following sequence of commands to get the executable client program dict:
+	cc -c dictionary.c
+	cc -o dictionary dictionary.o
+	
+	chmod 755 dictionary
+
+2. Run the below command:
+	./dictionary
+
+3. This now waits for user input. It supports following commands:
+	a. S					(Starts or initiates the dictionary).
+	b. i <word> <meaning>	(To insert a word, with its meaning. Example: i smart clean)
+	c. l <word>				(To retrieve word from the dictionary. Example: l smart)
+	d. d <word>				(To delete a word from the dictionary Example: d smart)
+	e. q					(quits the application)
+
+
+B. Remote Dictionary (Using SUN RPC)
+====================================
+
+1. Pre-requisites:
+
+	a. Install portmap using following command:
+		sudo apt-get install portmap
+
+2. Run rpcgen to create client side and server side stub files and XDR file 
+	rpcgen rdictionary.x
+
+
+3. Run the following sequence of commands to get the executable server and client program rdict and rdictd: 
+	
+	cc -c rdictionary_clnt.c
+	cc -c rdictionary_cif.c
+	cc -c rdictionary.c
+	cc -c rdictionary_xdr.c
+
+	cc -o rdictionary rdictionary_clnt.o rdictionary_cif.o rdictionary.o rdictionary_xdr.o
+
+	cc -c rdictionary_svc.c
+	cc -c rdictionary_sif.c
+	cc -c rdictionary_srp.c
+
+	cc -o rdictionarydaemon rdictionary_svc.o rdictionary_sif.o rdictionary_srp.o rdictionary_xdr.o
+
+	chmod 755 rdictionary
+
+	chmod 755 rdictionarydaemon
+
+
+4. Run the daemon first (start the server running in background)
+	./rdictionarydaemon &
+
+4. Run following command:
+	./rdictionary
+
+5. This now waits for user input. It supports following commands:
+	a. S					(Starts or initiates the dictionary).
+	b. i <word> <meaning>	(To insert a word, with its meaning. Example: i smart clean)
+	c. l <word>				(To retrieve word from the dictionary. Example: l smart)
+	d. d <word>				(To delete a word from the dictionary Example: d smart)
+	e. q					(quits the application)
